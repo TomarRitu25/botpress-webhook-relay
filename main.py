@@ -13,7 +13,7 @@ async def webhook_handler(request: Request):
     payload = await request.json()
     print("Received payload:", payload)
 
-    # Meta-style payload (e.g., from Facebook)
+    # Meta-style format (Facebook-style)
     if "entry" in payload:
         try:
             entry = payload["entry"][0]
@@ -22,10 +22,12 @@ async def webhook_handler(request: Request):
             text = message_obj["message"]["text"]
         except (KeyError, IndexError, TypeError):
             return {"error": "Meta-style payload malformed"}
-    # Simple custom payload
+
+    # Simple payload format (our test)
     elif "sender" in payload and "message" in payload:
         user_id = payload["sender"]
         text = payload["message"]
+
     else:
         return {"error": "Unexpected payload format"}
 
