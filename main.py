@@ -13,14 +13,19 @@ async def webhook_handler(request: Request):
     payload = await request.json()
     print("Received payload:", payload)
 
-    # Extract message (for Meta-style payloads)
+    # Try Meta-style extraction
     try:
         entry = payload["entry"][0]
         message_obj = entry["messaging"][0]
         user_id = message_obj["sender"]["id"]
         text = message_obj["message"]["text"]
-    except KeyError:
-        return {"error": "Unexpected payload format"}
+    except (KeyError, IndexError, TypeError):
+        # Fall back to simple format
+        if "sender" in payload and "message" in payload:
+            user_id = payload["sender"]
+            text = payload["message"]
+        else:
+            return {"error": "Unexpected payload format"}
 
     relay_payload = {
         "sender": user_id,
