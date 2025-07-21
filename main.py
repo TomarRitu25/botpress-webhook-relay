@@ -6,42 +6,49 @@ from dotenv import load_dotenv
 load_dotenv()
 
 app = FastAPI()
-BOTPRESS_WEBHOOK_URL = os.getenv("BOTPRESS_WEBHOOK_URL")
+
+BOTPRESS_API_URL = "https://bots.botpress.cloud/v1/chat/messages"
+BOTPRESS_BOT_ID = os.getenv("BOTPRESS_BOT_ID")
+BOTPRESS_CLIENT_TOKEN = os.getenv("BOTPRESS_CLIENT_TOKEN")  # From bot > Settings > API Key
 
 @app.post("/webhook")
 async def webhook_handler(request: Request):
     payload = await request.json()
     print("Received payload:", payload)
 
-    # Meta-style format (Facebook-style)
+    # Extract user_id and text
     if "entry" in payload:
         try:
-            entry = payload["entry"][0]
-            message_obj = entry["messaging"][0]
+            message_obj = payload["entry"][0]["messaging"][0]
             user_id = message_obj["sender"]["id"]
             text = message_obj["message"]["text"]
         except (KeyError, IndexError, TypeError):
             return {"error": "Meta-style payload malformed"}
-
-    # Simple payload format (our test)
     elif "sender" in payload and "message" in payload:
         user_id = payload["sender"]
         text = payload["message"]
-
     else:
         return {"error": "Unexpected payload format"}
 
-    relay_payload = {
-        "sender": user_id,
-        "message": text
+    botpress_payload = {
+        "botId": BOTPRESS_BOT_ID,
+        "channel": "web",
+        "payload": {
+            "text": text,
+            "type": "text"
+        },
+        "user": {
+            "id": user_id
+        }
+    }
+
+    headers = {
+        "Authorization": f"Bearer {BOTPRESS_CLIENT_TOKEN}",
+        "Content-Type": "application/json"
     }
 
     async with httpx.AsyncClient() as client:
-        await client.post(BOTPRESS_WEBHOOK_URL, json=relay_payload)
+        response = await client.post(BOTPRESS_API_URL, headers=headers, json=botpress_payload)
 
-    return {"status": "relayed"}
-
-@app.get("/debug")
-async def debug():
-    return {"message": "Botpress relay server is running!"}
+    return {"status": "relayed", "botpress_response": response.json()}
 
