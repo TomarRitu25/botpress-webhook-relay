@@ -42,6 +42,6 @@ async def webhook_handler(request: Request):
     return {"status": "relayed"}
 
 @app.get("/debug")
-def debug():
-    return {"status": "debug route hit", "env_url": BOTPRESS_WEBHOOK_URL}
+async def debug():
+    return {"message": "Botpress relay server is running!"}
 
