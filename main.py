@@ -7,7 +7,7 @@ load_dotenv()
 
 app = FastAPI()
 
-BOTPRESS_WEBHOOK_URL = os.getenv("BOTPRESS_WEBHOOK_URL")  # Full webhook URL
+BOTPRESS_WEBHOOK_URL = "https://webhook.botpress.cloud/68fae66c-1088-4960-877d-9e065bd72e72"  # Full webhook URL
 
 @app.post("/webhook")
 async def webhook_handler(request: Request):
