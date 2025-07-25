@@ -3,31 +3,27 @@ import httpx
 
 app = FastAPI()
 
+BOTPRESS_WEBHOOK = "https://webhook.botpress.cloud/2b379b7d-0abf-4f6d-aa36-a4408e7bd16c"
+
 @app.post("/")
-async def webhook_relay(request: Request):
-    data = await request.json()
+async def handle_webhook(request: Request):
+    payload = await request.json()
 
-    sender = data.get("sender")
-    message = data.get("message")
-    if not sender or not message:
-        return {"error": "Missing 'sender' or 'message'"}
+    # Instagram format
+    if "entry" in payload:
+        for entry in payload["entry"]:
+            for messaging_event in entry.get("messaging", []):
+                sender_id = messaging_event["sender"]["id"]
+                message_text = messaging_event.get("message", {}).get("text", "")
 
-    bp_event = {
-        "type": "custom",
-        "name": "webhook",
-        "payload": {
-            "sender": sender,
-            "message": message
-        }
-    }
+                # Forward to Botpress
+                await httpx.post(
+                    BOTPRESS_WEBHOOK,
+                    json={
+                        "type": "text",
+                        "text": message_text,
+                        "from": sender_id
+                    }
+                )
+    return {"status": "ok"}
 
-    bot_id = "276bd220-e084-4ace-87e7-20b0bcf3b834"  # <-- Replace this with your real bot ID
-    botpress_url = f"https://studio.botpress.cloud/v1/bots/{bot_id}/external/events"
-
-    async with httpx.AsyncClient() as client:
-        try:
-            res = await client.post(botpress_url, json=bp_event)
-            res.raise_for_status()
-            return {"status": "forwarded", "botpress": res.json()}
-        except Exception as e:
-            return {"error": str(e)}
